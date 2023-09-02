@@ -1,0 +1,8 @@
+flask
+flask-restful
+google-cloud-firestore
+google-cloud-pubsub
+gunicorn
+marshmallow
+wtforms
+PyTelegramBotAPI

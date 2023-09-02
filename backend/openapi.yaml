@@ -1,0 +1,479 @@
+swagger: "2.0"
+
+info:
+  version: "1.0"
+  title: "IOT Gate"
+  description: "Manage Access to your own Gate."
+
+host: "127.0.0.1:5000"
+basePath: "/api/v1"
+
+schemes:
+  - http
+
+tags:
+- name: "events"
+  description: "Events in front of the gate"
+- name: "accesses"
+  description: "Manage accesses to the gate"
+- name: "users"
+  description: "Gate's Telegram Users"
+- name: "gates"
+  description: "Gates Available"
+  
+paths:
+  /iot-gate/events/logs/{gate}:
+    post:
+      tags:
+        - "events"
+      summary: "Add a new event"
+      description: "Insert the image (base64) and the plate in the database"
+      operationId: "PostEvent"
+      consumes:
+        - application/json
+      parameters:
+        - name: gate
+          in: path
+          description: Gate ID
+          type: string
+          format: uuid
+          required: true
+        - name: Event
+          in: body
+          required: True
+          description: "Event's data"
+          schema:
+            $ref: "#/definitions/Event"
+      responses:
+        201:
+          description: "Success"
+          schema:
+            $ref: "#/definitions/EventDetail"
+        400:
+          description: "Generic error"
+        404:
+          description: "Gate Not Found"
+    get:
+      tags:
+        - "events"
+      summary: "Get the latest events"
+      description: "Get the events in the last 20 minutes"
+      operationId: "GetLastEvents"
+      parameters:
+        - name: gate
+          in: path
+          description: Gate ID
+          type: string
+          format: uuid
+          required: true
+      responses:
+        200:
+          description: "Success"
+          schema:
+            $ref: "#/definitions/EventDetailList"
+        400:
+          description: "Generic Error"
+        404:
+          description: "Not Found"
+  /iot-gate/events/{gate}:
+    post:
+      tags:
+        - "events"
+      summary: "Recognize the plate"
+      description: "Recognize the plate in the Image, save the Event in the database and check if the car is allowed to enter."
+      operationId: "MatchEvent"
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: gate
+          in: path
+          description: Gate ID
+          type: string
+          format: uuid
+          required: true
+        - in: formData
+          name: image
+          type: file
+          format: binary
+          description: The image to upload.
+          x-mimetype: image/jpeg
+      responses:
+        200:
+          description: "Success"
+          schema:
+            $ref: "#/definitions/PlateDetail"
+        400:
+          description: "Generic error"
+        404:
+          description: "Gate or Plate Not Found"
+        409:
+          description: "No plate recognized"
+          
+  /iot-gate/accesses/{gate}/{plate}:
+    parameters:
+      - name: gate
+        in: path
+        required: true
+        description: "Gate ID"
+        type: string
+        format: uuid
+      - name: plate
+        in: path
+        required: true
+        description: "Plate in string format"
+        type: string
+    get:
+      tags:
+        - "accesses"
+      summary: "Get plate information"
+      description: "Get the information about the plate"
+      operationId: "GetAccessPlate"
+      responses:
+        200:
+          description: "Success."
+          schema:
+            $ref: "#/definitions/PlateDetail"
+        400:
+          description: "Generic error"
+        404:
+          description: "Not Found"
+    post:
+      tags:
+        - "accesses"
+      summary: "Add a new plate"
+      description: "Insert the plate and the owner in the database"
+      operationId: "PostAccessPlate"
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: owner
+          required: False
+          description: "Owner's name"
+          schema:
+            $ref: "#/definitions/Owner"
+      responses:
+        201:
+          description: "Success"
+          schema:
+            $ref: "#/definitions/PlateDetail"
+        400:
+          description: "Generic error"
+        404:
+          description: "Gate not found"
+        409:
+          description: "Plate already in the database"
+    delete:
+      tags:
+        - "accesses"
+      summary: "Delete Plate"
+      description: "Delete the informations about the plate from the database"
+      operationId: "DeleteAccessPlate"
+      responses:
+        200:
+          description: "Success"
+        400:
+          description: "Generic Error"
+        404:
+          description: "Plate not found"
+  
+  /iot-gate/gates/{chat}:
+    parameters:
+      - name: chat
+        in: path
+        required: true
+        description: "Chat ID"
+        type: string
+        minLength: 7
+        maxLength: 7
+    get:
+      tags:
+        - "gates"
+      summary: "Get User's Gates"
+      description: "Get the Gates associated to the Chat ID"
+      operationId: "GetUserGates"
+      responses:
+        200:
+          description: "Success."
+          schema:
+            $ref: "#/definitions/UserList"
+        400:
+          description: "Generic error"
+        404:
+          description: "Not Found"
+  /iot-gate/accesses/{gate}:
+    parameters:
+      - name: gate
+        in: path
+        required: true
+        description: "Gate ID"
+        type: string
+        format: uuid
+    get:
+      tags:
+        - "accesses"
+      summary: "Get Gate's plates"
+      description: "Get the information about the plates registered to a gate"
+      operationId: "GetAccessPlateGroup"
+      responses:
+        200:
+          description: "Success."
+          schema:
+            $ref: "#/definitions/PlateDetailList"
+        400:
+          description: "Generic error"
+        404:
+          description: "Not Found"
+
+  /iot-gate/users/{gate}/{chat}:
+    parameters:
+      - name: gate
+        in: path
+        required: true
+        description: "Gate ID"
+        type: string
+        format: uuid
+      - name: chat
+        in: path
+        required: true
+        description: "Chat ID"
+        type: string
+        minLength: 7
+        maxLength: 7
+    get:
+      tags:
+        - "users"
+      summary: "Get User"
+      description: "Get User's informations"
+      operationId: "GetUser"
+      responses:
+        200:
+          description: "Success."
+          schema:
+            $ref: "#/definitions/User"
+        400:
+          description: "Generic error"
+        404:
+          description: "Not Found"
+    post:
+      tags:
+        - "users"
+      summary: "Add a new User"
+      description: "Add the User and its data to the database"
+      operationId: "PostUser"
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: username
+          required: True
+          description: "Gate's informations"
+          schema:
+            $ref: "#/definitions/GateInfo"
+      responses:
+        201:
+          description: "Success"
+          schema:
+            $ref: "#/definitions/User"
+        400:
+          description: "Generic error"
+        404:
+          description: "Gate Not Found"
+        409:
+          description: "User already associate to the Gate ID in the database"
+        412:
+          description: "Gate's Name already associated to another User's Gate"
+    delete:
+      tags:
+        - "users"
+      summary: "Delete User"
+      description: "Delete the informations about the user from the database"
+      operationId: "DeleteUser"
+      responses:
+        200:
+          description: "Success"
+        400:
+          description: "Generic Error"
+        404:
+          description: "User not found"
+    patch:
+      tags:
+        - "users"
+      summary: "Update User's Gate's Name"
+      description: "Update the informations about the user's gate's name"
+      operationId: "UpdateUser"
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: gate_name
+          required: True
+          description: "Gate's name"
+          schema:
+            $ref: "#/definitions/GateName"
+      responses:
+        200:
+          description: "Success"
+        400:
+          description: "Generic Error"
+        404:
+          description: "User not found"
+        412:
+          description: "Gate's Name already associated to another User's Gate"
+  
+  /iot-gate/users/{gate}:
+    parameters:
+      - name: gate
+        in: path
+        required: true
+        description: "Gate ID"
+        type: string
+        format: uuid
+    get:
+      tags:
+        - "users"
+      summary: "Get User's Group"
+      description: "Get the informations about the Users belonging to the same Gate's Group"
+      operationId: "GetUserGroup"
+      responses:
+        200:
+          description: "Success."
+          schema:
+            $ref: "#/definitions/UserList"
+        400:
+          description: "Generic error"
+        404:
+          description: "Not Found"
+  
+  /iot-gate/events/clean:
+    get:
+      tags:
+        - "events"
+      summary: "Delete all the events"
+      description: "Clean the events in the database"
+      operationId: "CleanEventsDB"
+      responses:
+        200: 
+          description: "Ok"
+  /iot-gate/accesses/clean:
+    get:
+      tags:
+        - "accesses"
+      summary: "Delete all the events"
+      description: "Clean the plates in the database"
+      operationId: "CleanPlatesDB"
+      responses:
+        200: 
+          description: "Ok"
+  /iot-gate/users/clean:
+    get:
+      tags:
+        - "users"
+      summary: "Delete all the users"
+      description: "Clean the users in the database"
+      operationId: "CleanUsersDB"
+      responses:
+        200: 
+          description: "Ok"
+  /iot-gate/gates/clean:
+    get:
+      tags:
+        - "gates"
+      summary: "Delete all the gates"
+      description: "Clean the gates in the database"
+      operationId: "CleanGatesDB"
+      responses:
+        200: 
+          description: "Ok"
+        
+definitions:
+  Event:
+    type: object
+    required:
+      - image
+      - plate
+    properties:
+      image: 
+        type: string
+        format: base64
+      plate:
+        type: string
+        minLength: 7
+        maxLength: 7
+  EventDetail:
+    type: object
+    properties:
+      gate_id: 
+        type: string
+        format: uuid
+      plate_string:
+        type: string
+        minLength: 7
+        maxLength: 7
+      timestamp:
+        type: string
+        format: timestamp
+      hash:
+        type: string
+        format: hash
+  EventDetailList:
+    type: array
+    items:
+      $ref: "#/definitions/EventDetail"
+  PlateDetail:
+    type: object
+    properties:
+      plate_string:
+        type: string
+        minLength: 7
+        maxLength: 7
+      gate_id:
+        type: string
+        format: uuid
+      owner: 
+        type: string
+        maxLength: 25
+  PlateDetailList:
+    type: array
+    items:
+      $ref: "#/definitions/PlateDetail"
+  User:
+    type: object
+    properties:
+      chat_id:
+        type: string
+        maxLength: 9
+        minLength: 9
+      gate_id: 
+        type: string
+        format: uuid
+      username:
+        type: string
+        minLength: 5
+        maxLength: 20
+      gate_name:
+        type: string
+        minLength: 5
+        maxLength: 20
+  UserList:
+    type: array
+    items:
+      $ref: "#/definitions/User"
+  Owner:
+    type: string
+    maxLength: 25
+  GateName:
+    type: string
+    maxLength: 20
+    minLength: 5
+  GateInfo:
+    type: object
+    properties:
+      username:
+        type: string
+        maxLength: 20
+        minLength: 5
+      gate_name:
+        type: string
+        maxLength: 20
+        minLength: 5
